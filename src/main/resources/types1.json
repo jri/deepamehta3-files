@@ -4,14 +4,15 @@
         uri: "de/deepamehta/core/topictype/File",
         icon_src: "/de.deepamehta.3-files/images/sheet.png",
         js_renderer_class: "PlainDocument",
+        topic_label_field_uri: "de/deepamehta/core/property/Filename",
         fields: [
-	        {
-	            label: "Content",
-	            uri: "de/deepamehta/core/property/Content",
-	            data_type: "html",
-	            indexing_mode: "FULLTEXT",
+            {
+                label: "Content",
+                uri: "de/deepamehta/core/property/Content",
+                data_type: "html",
+                indexing_mode: "FULLTEXT",
                 js_renderer_class: BodyTextRenderer
-	        },
+            },
             {
                 label: "Filename",
                 uri: "de/deepamehta/core/property/Filename",
@@ -31,7 +32,7 @@
                 uri: "de/deepamehta/core/property/MimeType",
                 data_type: "text",
                 editor: "single line",
-	            indexing_mode: "FULLTEXT"
+                indexing_mode: "FULLTEXT"
             },
             {
                 label: "Size",

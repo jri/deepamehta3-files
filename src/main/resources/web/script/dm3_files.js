@@ -22,9 +22,11 @@ function dm3_files() {
         } else if (file.type.match(/^image\//)) {
             var content = "<img src=\"" + local_resource_uri(file.path, file.type, file.size) + "\">"
         } else if (file.type == "application/pdf") {
-            var content = "<iframe src=\"" + local_resource_uri(file.path, file.type, file.size) + "\">"
+            var content = "<embed src=\"" + local_resource_uri(file.path, file.type, file.size) +
+                "\" width=\"100%\" height=\"100%\">"
         } else if (file.type.match(/^audio\//)) {
-            var content = "<iframe src=\"" + local_resource_uri(file.path, file.type, file.size) + "\">"
+            var content = "<embed src=\"" + local_resource_uri(file.path, file.type, file.size) +
+                "\" width=\"100%\" height=\"100\">"
         } else {
             // TODO: handle by plugins
         }
