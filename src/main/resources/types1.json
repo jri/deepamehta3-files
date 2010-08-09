@@ -11,7 +11,7 @@
                 uri: "de/deepamehta/core/property/Content",
                 data_type: "html",
                 indexing_mode: "FULLTEXT",
-                js_renderer_class: BodyTextRenderer
+                js_renderer_class: "BodyTextRenderer"
             },
             {
                 label: "Filename",
