@@ -18,7 +18,7 @@
         <dependency>
             <groupId>de.deepamehta</groupId>
             <artifactId>deepamehta3-core</artifactId>
-            <version>0.4</version>
+            <version>0.4.1-SNAPSHOT</version>
         </dependency>
     </dependencies>
 
