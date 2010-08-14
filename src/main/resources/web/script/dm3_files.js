@@ -34,16 +34,13 @@ function dm3_files() {
                 // Requires the UniversalFileRead privilege to read.
                 netscape.security.PrivilegeManager.enablePrivilege("UniversalFileRead")
                 for (var i = 0, file; file = data_transfer.files[i]; i++) {
+                    var path = file.mozFullPath
                     if (is_directory(file)) {
-                        var dropped_dir = dmc.get_resource("file:" + file.mozFullPath)
+                        var dropped_dir = dmc.get_resource("file:" + path)
                         trigger_hook("directory_dropped", dropped_dir)
                         continue
                     }
-                    var dropped_file = new File(file.name, file.mozFullPath, file.type, file.size)
-                    if (file.type == "text/plain") {
-                        read_text_file(dropped_file)
-                    }
-                    trigger_hook("file_dropped", dropped_file)
+                    process_file(new File(file.name, path, file.type, file.size))
                 }
             } catch (e) {
                 alert("Local file \"" + file.name + "\" can't be accessed.\n\n" + e)
@@ -69,11 +66,7 @@ function dm3_files() {
                     trigger_hook("directory_dropped", dropped_dir)
                     continue
                 }
-                var dropped_file = new File(file.name, path, file.type, file.size)
-                if (file.type == "text/plain") {
-                    read_text_file(dropped_file)
-                }
-                trigger_hook("file_dropped", dropped_file)
+                process_file(new File(file.name, path, file.type, file.size))
             }
 
             function uri_to_path(uri) {
@@ -94,7 +87,7 @@ function dm3_files() {
 
     this.file_dropped = function(file) {
         var properties = {
-            "de/deepamehta/core/property/Filename":  file.name,
+            "de/deepamehta/core/property/FileName":  file.name,
             "de/deepamehta/core/property/Path":      file.path,
             "de/deepamehta/core/property/MediaType": file.type,
             "de/deepamehta/core/property/Size":      file.size
@@ -130,10 +123,12 @@ function dm3_files() {
     this.directory_dropped = function(dir) {
         for (var i = 0, item; item = dir.items[i]; i++) {
             if (item.kind == "file") {
-                if (item.type == "text/plain") {
-                    read_text_file(item)
-                }
-                trigger_hook("file_dropped", item)
+                process_file(item)
+            } else if (item.kind == "directory") {
+                process_directory(item)
+            } else {
+                alert("WARNING (directory_dropped):\n\nItem \"" + item.name + "\" of directory \"" +
+                    dir.name + "\" is of unexpected kind: \"" + item.kind + "\".")
             }
         }
     }
@@ -162,8 +157,24 @@ function dm3_files() {
 
     // ---
 
-    function read_text_file(file) {
-        file.content = dmc.get_resource("file:" + file.path)
+    function process_file(file) {
+        if (file.type == "text/plain") {
+            read_text_file(file)
+        }
+        trigger_hook("file_dropped", file)
+
+        function read_text_file(file) {
+            file.content = dmc.get_resource("file:" + file.path)
+        }
+    }
+
+    function process_directory(dir) {
+        var properties = {
+            "de/deepamehta/core/property/FolderName": dir.name,
+            "de/deepamehta/core/property/Path":       dir.path
+        }
+        var folder_topic = create_topic("de/deepamehta/core/topictype/Folder", properties)
+        add_topic_to_canvas(folder_topic, "show")
     }
 
     /*** Custom Classes ***/
