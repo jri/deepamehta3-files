@@ -133,6 +133,16 @@ function dm3_files() {
         }
     }
 
+    /**
+     * @param   topic   a CanvasTopic object
+     */
+    this.topic_doubleclicked = function(topic) {
+        if (topic.type == "de/deepamehta/core/topictype/File" ||
+            topic.type == "de/deepamehta/core/topictype/Folder") {
+            dmc.execute_command("deepamehta3-files.open-file", {topic_id: topic.id})
+        }
+    }
+
 
 
     /************************************************************************************************/
