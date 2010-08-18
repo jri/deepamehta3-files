@@ -15,10 +15,11 @@ function dm3_files() {
     this.process_drop = function(data_transfer) {
         if (contains(data_transfer.types, "Files")) {
             if (typeof netscape != "undefined") {
-                process_file_drop_firefox(data_transfer)
+                var files = process_file_drop_firefox(data_transfer)
             } else {
-                process_file_drop_safari(data_transfer)
+                var files = process_file_drop_safari(data_transfer)
             }
+            trigger_hook("process_files_drop", files)
         } else if (contains(data_transfer.types, "text/plain")) {
             alert("WARNING: Dropped item is not processed.\n\nType: text/plain (not yet implemented)\n\n" +
                 "Text: " + data_transfer.getData("text/plain"))
@@ -26,10 +27,10 @@ function dm3_files() {
             alert("WARNING: Dropped item is not processed.\n\nUnexpected type (not yet implemented)\n\n" +
                 inspect(data_transfer))
         }
-        return false;
 
         function process_file_drop_firefox(data_transfer) {
             try {
+                var files = new FilesDataTransfer()
                 // Firefox note: a DOM File's "mozFullPath" attribute contains the file's path.
                 // Requires the UniversalFileRead privilege to read.
                 netscape.security.PrivilegeManager.enablePrivilege("UniversalFileRead")
@@ -37,11 +38,12 @@ function dm3_files() {
                     var path = file.mozFullPath
                     if (is_directory(file)) {
                         var dropped_dir = dmc.get_resource("file:" + path)
-                        trigger_hook("directory_dropped", dropped_dir)
+                        files.add_directory(dropped_dir)
                         continue
                     }
-                    process_file(new File(file.name, path, file.type, file.size))
+                    files.add_file(new File(file.name, path, file.type, file.size))
                 }
+                return files
             } catch (e) {
                 alert("Local file \"" + file.name + "\" can't be accessed.\n\n" + e)
             }
@@ -57,17 +59,19 @@ function dm3_files() {
         }
 
         function process_file_drop_safari(data_transfer) {
+            var files = new FilesDataTransfer()
             // Note: Safari provides a "text/uri-list" data flavor which holds the URIs of the files dropped
             var uri_list = data_transfer.getData("text/uri-list").split("\n")
             for (var i = 0, file; file = data_transfer.files[i]; i++) {
                 var path = uri_to_path(uri_list[i])
                 if (is_directory(path)) {
                     var dropped_dir = dmc.get_resource("file:" + path)
-                    trigger_hook("directory_dropped", dropped_dir)
+                    files.add_directory(dropped_dir)
                     continue
                 }
-                process_file(new File(file.name, path, file.type, file.size))
+                files.add_file(new File(file.name, path, file.type, file.size))
             }
+            return files
 
             function uri_to_path(uri) {
                 // Note: local file URIs provided by Safari begin with "file://localhost" which must be cut off
@@ -85,7 +89,25 @@ function dm3_files() {
         }
     }
 
-    this.file_dropped = function(file) {
+    /**
+     * @param   topic   a CanvasTopic object
+     */
+    this.topic_doubleclicked = function(topic) {
+        if (topic.type == "de/deepamehta/core/topictype/File" ||
+            topic.type == "de/deepamehta/core/topictype/Folder") {
+            dmc.execute_command("deepamehta3-files.open-file", {topic_id: topic.id})
+        }
+    }
+
+
+
+    /********************************************************************************************/
+    /**************************************** Public API ****************************************/
+    /********************************************************************************************/
+
+
+
+    this.create_file_topic = function(file) {
         var properties = {
             "de/deepamehta/core/property/FileName":  file.name,
             "de/deepamehta/core/property/Path":      file.path,
@@ -94,7 +116,7 @@ function dm3_files() {
         }
         // Note: for unknown file types file.type is undefined
         if (file.type == "text/plain") {
-            var content = "<pre>" + file.content + "</pre>"
+            var content = "<pre>" + read_text_file(file) + "</pre>"
         } else if (file.type && file.type.match(/^image\//)) {
             var content = "<img src=\"" + local_resource_uri(file.path, file.type, file.size) + "\"></img>"
         } else if (file.type == "application/pdf") {
@@ -118,28 +140,35 @@ function dm3_files() {
         //
         var file_topic = create_topic("de/deepamehta/core/topictype/File", properties)
         add_topic_to_canvas(file_topic, "show")
-    }
 
-    this.directory_dropped = function(dir) {
-        for (var i = 0, item; item = dir.items[i]; i++) {
-            if (item.kind == "file") {
-                process_file(item)
-            } else if (item.kind == "directory") {
-                process_directory(item)
-            } else {
-                alert("WARNING (directory_dropped):\n\nItem \"" + item.name + "\" of directory \"" +
-                    dir.name + "\" is of unexpected kind: \"" + item.kind + "\".")
-            }
+        function local_resource_uri(path, type, size) {
+            return "/resource/file:" + encodeURIComponent(path) + "?type=" + type + "&size=" + size
+        }
+
+        function read_text_file(file) {
+            return dmc.get_resource("file:" + file.path)
         }
     }
 
-    /**
-     * @param   topic   a CanvasTopic object
-     */
-    this.topic_doubleclicked = function(topic) {
-        if (topic.type == "de/deepamehta/core/topictype/File" ||
-            topic.type == "de/deepamehta/core/topictype/Folder") {
-            dmc.execute_command("deepamehta3-files.open-file", {topic_id: topic.id})
+    this.create_folder_topic = function(dir) {
+        var properties = {
+            "de/deepamehta/core/property/FolderName": dir.name,
+            "de/deepamehta/core/property/Path":       dir.path
+        }
+        var folder_topic = create_topic("de/deepamehta/core/topictype/Folder", properties)
+        add_topic_to_canvas(folder_topic, "show")
+    }
+
+    this.create_file_topics = function(dir) {
+        for (var i = 0, item; item = dir.items[i]; i++) {
+            if (item.kind == "file") {
+                this.create_file_topic(item)
+            } else if (item.kind == "directory") {
+                this.create_folder_topic(item)
+            } else {
+                alert("WARNING (create_file_topics):\n\nItem \"" + item.name + "\" of directory \"" +
+                    dir.name + "\" is of unexpected kind: \"" + item.kind + "\".")
+            }
         }
     }
 
@@ -152,6 +181,7 @@ function dm3_files() {
 
 
     function extend_rest_client() {
+
         /**
          * @param   uri     Must not be URI-encoded!
          */
@@ -161,41 +191,50 @@ function dm3_files() {
         }
     }
 
-    function local_resource_uri(path, type, size) {
-        return "/resource/file:" + encodeURIComponent(path) + "?type=" + type + "&size=" + size
-    }
-
-    // ---
-
-    function process_file(file) {
-        if (file.type == "text/plain") {
-            read_text_file(file)
-        }
-        trigger_hook("file_dropped", file)
-
-        function read_text_file(file) {
-            file.content = dmc.get_resource("file:" + file.path)
-        }
-    }
-
-    function process_directory(dir) {
-        var properties = {
-            "de/deepamehta/core/property/FolderName": dir.name,
-            "de/deepamehta/core/property/Path":       dir.path
-        }
-        var folder_topic = create_topic("de/deepamehta/core/topictype/Folder", properties)
-        add_topic_to_canvas(folder_topic, "show")
-    }
-
     /*** Custom Classes ***/
 
-    function File(name, path, type, size, content) {
+    function FilesDataTransfer() {
+
+        var files = []
+        var directories = []
+
+        // ---
+
+        this.add_file = function(file) {
+            files.push(file)
+        }
+
+        this.add_directory = function(directory) {
+            directories.push(directory)
+        }
+
+        // ---
+
+        this.get_file_count = function() {
+            return files.length
+        }
+
+        this.get_directory_count = function() {
+            return directories.length
+        }
+
+        // ---
+
+        this.get_file = function(index) {
+            return files[index]
+        }
+
+        this.get_directory = function(index) {
+            return directories[index]
+        }
+    }
+
+    function File(name, path, type, size) {
         this.kind = "file"
         this.name = name
         this.path = path
         this.type = type
         this.size = size
-        this.content = content
     }
 
     function Directory(name, path, items) {
