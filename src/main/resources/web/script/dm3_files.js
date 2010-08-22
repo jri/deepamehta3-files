@@ -1,12 +1,6 @@
 function dm3_files() {
 
-
-
-    /**************************************************************************************************/
-    /**************************************** Overriding Hooks ****************************************/
-    /**************************************************************************************************/
-
-
+    // ------------------------------------------------------------------------------------------------ Overriding Hooks
 
     this.init = function() {
         extend_rest_client()
@@ -19,7 +13,10 @@ function dm3_files() {
             } else {
                 var files = process_file_drop_safari(data_transfer)
             }
-            trigger_hook("process_files_drop", files)
+            // Note: if an error occurred "files" is not initialized
+            if (files) {
+                trigger_hook("process_files_drop", files)
+            }
         } else if (contains(data_transfer.types, "text/plain")) {
             alert("WARNING: Dropped item is not processed.\n\nType: text/plain (not yet implemented)\n\n" +
                 "Text: " + data_transfer.getData("text/plain"))
@@ -31,10 +28,10 @@ function dm3_files() {
         function process_file_drop_firefox(data_transfer) {
             try {
                 var files = new FilesDataTransfer()
-                // Firefox note: a DOM File's "mozFullPath" attribute contains the file's path.
-                // Requires the UniversalFileRead privilege to read.
-                netscape.security.PrivilegeManager.enablePrivilege("UniversalFileRead")
                 for (var i = 0, file; file = data_transfer.files[i]; i++) {
+                    // Firefox note: a DOM File's "mozFullPath" attribute contains the file's path.
+                    // Requires the UniversalFileRead privilege to read.
+                    netscape.security.PrivilegeManager.enablePrivilege("UniversalFileRead")
                     var path = file.mozFullPath
                     if (is_directory(file)) {
                         var dropped_dir = dmc.get_resource("file:" + path)
@@ -45,7 +42,7 @@ function dm3_files() {
                 }
                 return files
             } catch (e) {
-                alert("Local file \"" + file.name + "\" can't be accessed.\n\n" + e)
+                alert("Local file/folder \"" + file.name + "\" can't be accessed.\n\n" + e)
             }
 
             function is_directory(file) {
@@ -99,15 +96,15 @@ function dm3_files() {
         }
     }
 
+    // ------------------------------------------------------------------------------------------------------ Public API
 
-
-    /********************************************************************************************/
-    /**************************************** Public API ****************************************/
-    /********************************************************************************************/
-
-
-
-    this.create_file_topic = function(file) {
+    /**
+     * Creates a File topic for the given file and shows the topic on the canvas.
+     *
+     * @param   file        A File object (with "name", "path", "type", and "size" attributes).
+     * @param   do_select   Optional: if evaluates to true the File topic is selected on the canvas.
+     */
+    this.create_file_topic = function(file, do_select) {
         var properties = {
             "de/deepamehta/core/property/FileName":  file.name,
             "de/deepamehta/core/property/Path":      file.path,
@@ -139,7 +136,8 @@ function dm3_files() {
         }
         //
         var file_topic = create_topic("de/deepamehta/core/topictype/File", properties)
-        add_topic_to_canvas(file_topic, "show")
+        var action = do_select ? "show" : "none"
+        add_topic_to_canvas(file_topic, action)
 
         function local_resource_uri(path, type, size) {
             return "/resource/file:" + encodeURIComponent(path) + "?type=" + type + "&size=" + size
@@ -150,21 +148,36 @@ function dm3_files() {
         }
     }
 
-    this.create_folder_topic = function(dir) {
+    /**
+     * Creates a Folder topic for the given directory and shows the topic on the canvas.
+     *
+     * @param   dir         A Directory object (with "name", "path", and "items" attributes).
+     * @param   do_select   Optional: if evaluates to true the Folder topic is selected on the canvas.
+     */
+    this.create_folder_topic = function(dir, do_select) {
         var properties = {
             "de/deepamehta/core/property/FolderName": dir.name,
             "de/deepamehta/core/property/Path":       dir.path
         }
         var folder_topic = create_topic("de/deepamehta/core/topictype/Folder", properties)
-        add_topic_to_canvas(folder_topic, "show")
+        var action = do_select ? "show" : "none"
+        add_topic_to_canvas(folder_topic, action)
     }
 
-    this.create_file_topics = function(dir) {
+    /**
+     * Creates respective File and Folder topics for all items contained in the given directory
+     * and shows the topics on the canvas.
+     *
+     * @param   dir                 A Directory object (with "name", "path", and "items" attributes).
+     * @param   select_first_topic  Optional: if evaluates to true the first created topic is selected on the canvas.
+     */
+    this.create_file_topics = function(dir, select_first_topic) {
         for (var i = 0, item; item = dir.items[i]; i++) {
+            var do_select = select_first_topic && i == 0
             if (item.kind == "file") {
-                this.create_file_topic(item)
+                this.create_file_topic(item, do_select)
             } else if (item.kind == "directory") {
-                this.create_folder_topic(item)
+                this.create_folder_topic(item, do_select)
             } else {
                 alert("WARNING (create_file_topics):\n\nItem \"" + item.name + "\" of directory \"" +
                     dir.name + "\" is of unexpected kind: \"" + item.kind + "\".")
@@ -172,13 +185,7 @@ function dm3_files() {
         }
     }
 
-
-
-    /************************************************************************************************/
-    /**************************************** Custom Methods ****************************************/
-    /************************************************************************************************/
-
-
+    // ------------------------------------------------------------------------------------------------- Private Methods
 
     function extend_rest_client() {
 
@@ -191,7 +198,7 @@ function dm3_files() {
         }
     }
 
-    /*** Custom Classes ***/
+    // ------------------------------------------------------------------------------------------------- Private Classes
 
     function FilesDataTransfer() {
 
