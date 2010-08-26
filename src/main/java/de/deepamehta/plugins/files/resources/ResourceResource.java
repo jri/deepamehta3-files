@@ -38,19 +38,26 @@ public class ResourceResource {
     public Response getResource(@PathParam("uri") URL uri, @Context HttpServletRequest request,
                                                            @QueryParam("type") String type,
                                                            @QueryParam("size") long size) throws Exception {
-        String localAddr = request.getLocalAddr();
-        String remoteAddr = request.getRemoteAddr();
-        boolean allowed = localAddr.equals(remoteAddr);
-        logger.info("Requesting resource " + uri + " (type=\"" + type + "\", size=" + size + ")\n  local address: " +
-            localAddr + ", remote address: " + remoteAddr + " => " + (allowed ? "ALLOWED" : "FORBIDDEN"));
-        if (allowed) {
+        logger.info("Requesting resource " + uri + " (type=\"" + type + "\", size=" + size + ")");
+        if (isRequestAllowed(request)) {
             if (uri.getProtocol().equals("file")) {
                 File file = new File(uri.getPath());
                 if (file.isDirectory()) {
                     return directoryResource(file);
-                }                
+                }
             }
             return resource(uri, type, size);
+        } else {
+            return Response.status(Status.FORBIDDEN).build();
+        }
+    }
+
+    @GET
+    @Path("/{uri}/info")
+    public Response getResourceInfo(@PathParam("uri") URL uri, @Context HttpServletRequest request) throws Exception {
+        logger.info("Requesting resource info for " + uri);
+        if (isRequestAllowed(request)) {
+            return resourceInfo(uri);
         } else {
             return Response.status(Status.FORBIDDEN).build();
         }
@@ -92,5 +99,33 @@ public class ResourceResource {
             items.put(item);
         }
         return Response.ok(dir, "application/json").build();
+    }
+
+    private Response resourceInfo(URL uri) throws Exception {
+        JSONObject info = new JSONObject();
+        if (uri.getProtocol().equals("file")) {
+            File file = new File(uri.getPath());
+            if (!file.exists()) {
+                info.put("error", "not found");
+            } else if (file.isDirectory()) {
+                info.put("kind", "directory");
+            } else {
+                info.put("kind", "file");
+            }
+        } else {
+            info.put("kind", "remote");
+        }
+        return Response.ok(info).build();
+    }
+
+    // ---
+
+    private boolean isRequestAllowed(HttpServletRequest request) {
+        String localAddr = request.getLocalAddr();
+        String remoteAddr = request.getRemoteAddr();
+        boolean allowed = localAddr.equals(remoteAddr);
+        logger.info("local address: " + localAddr + ", remote address: " + remoteAddr +
+            " => " + (allowed ? "ALLOWED" : "FORBIDDEN"));
+        return allowed;
     }
 }

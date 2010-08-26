@@ -10,19 +10,22 @@ function dm3_files() {
         if (contains(data_transfer.types, "Files")) {
             if (typeof netscape != "undefined") {
                 var files = process_file_drop_firefox(data_transfer)
-            } else {
+            } else if (contains(data_transfer.types, "text/uri-list")) {
                 var files = process_file_drop_safari(data_transfer)
+            } else {
+                alert("WARNING: drag'n'drop operation is ignored.\n\nDropping files/folders is not yet supported " +
+                    "by DeepaMehta for this browser/operating system.\n" + inspect(navigator) + inspect($.browser))
             }
             // Note: if an error occurred "files" is not initialized
             if (files) {
                 trigger_hook("process_files_drop", files)
             }
         } else if (contains(data_transfer.types, "text/plain")) {
-            alert("WARNING: Dropped item is not processed.\n\nType: text/plain (not yet implemented)\n\n" +
-                "Text: " + data_transfer.getData("text/plain"))
+            alert("WARNING: drag'n'drop operation is ignored.\n\nType: text/plain " +
+                "(not yet implemented by DeepaMehta)\n\nText: \"" + data_transfer.getData("text/plain") + "\"")
         } else {
-            alert("WARNING: Dropped item is not processed.\n\nUnexpected type (not yet implemented)\n\n" +
-                inspect(data_transfer))
+            alert("WARNING: drag'n'drop operation is ignored.\n\nUnexpected type " +
+                "(not yet implemented by DeepaMehta)\n" + inspect(data_transfer))
         }
 
         function process_file_drop_firefox(data_transfer) {
@@ -46,12 +49,15 @@ function dm3_files() {
             }
 
             function is_directory(file) {
-                // Firefox note 1: The path of a File object which represents a directory doesn't end with "/".
-                // So we can't detect directories safely.
-                // Firefox note 2: The size of a File object which represents a directory is 0.
-                // We exploit this fact to detect a directory heuristically.
-                // Obviously a wrong result is returned by zero-byte files.
-                return file.size == 0
+                // Note: Firefox does *not* end the path of a File object which represents a directory with "/".
+                // So we can't detect directories safely by relying on the path.
+                // Instead: if the item's MIME type is known we know it is not a directory.
+                if (file.type) {
+                    return false
+                }
+                // Otherwise we involve the server to get information about the item
+                var info = dmc.get_resource_info("file:" + file.mozFullPath)
+                return info.kind == "directory"
             }
         }
 
@@ -80,7 +86,7 @@ function dm3_files() {
             }
 
             function is_directory(path) {
-                // Safari note: The URI of a File object which represents a directory end with "/".
+                // Note: Safari does end the URI of a File object which represents a directory with "/".
                 return path.match(/.$/)[0] == "/"
             }
         }
@@ -195,6 +201,13 @@ function dm3_files() {
         dmc.get_resource = function(uri, type, size) {
             var params = this.createRequestParameter({type: type, size: size})
             return this.request("GET", "/resource/" + encodeURIComponent(uri) + params.to_query_string())
+        }
+
+        /**
+         * @param   uri     Must not be URI-encoded!
+         */
+        dmc.get_resource_info = function(uri) {
+            return this.request("GET", "/resource/" + encodeURIComponent(uri) + "/info")
         }
     }
 
