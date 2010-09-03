@@ -111,47 +111,8 @@ function dm3_files() {
      * @param   do_select   Optional: if evaluates to true the File topic is selected on the canvas.
      */
     this.create_file_topic = function(file, do_select) {
-        var properties = {
-            "de/deepamehta/core/property/FileName":  file.name,
-            "de/deepamehta/core/property/Path":      file.path,
-            "de/deepamehta/core/property/MediaType": file.type,
-            "de/deepamehta/core/property/Size":      file.size
-        }
-        // Note: for unknown file types file.type is undefined
-        if (file.type == "text/plain") {
-            var content = "<pre>" + read_text_file(file) + "</pre>"
-        } else if (file.type && file.type.match(/^image\//)) {
-            var content = "<img src=\"" + local_resource_uri(file.path, file.type, file.size) + "\"></img>"
-        } else if (file.type == "application/pdf") {
-            var content = "<embed src=\"" + local_resource_uri(file.path, file.type, file.size) +
-                "\" width=\"100%\" height=\"100%\"></embed>"
-        } else if (file.type && file.type.match(/^audio\//)) {
-            var content = "<embed src=\"" + local_resource_uri(file.path, file.type, file.size) +
-                "\" width=\"95%\" height=\"80\"></embed>"
-            // var content = "<audio controls=\"\" src=\"" + local_resource_uri(file.path, file.type, file.size) +
-            // "\"></audio>"
-        } else if (file.type && file.type.match(/^video\//)) {
-            var content = "<embed src=\"" + local_resource_uri(file.path, file.type, file.size) + "\"></embed>"
-            // var content = "<video controls=\"\" src=\"" + local_resource_uri(file.path, file.type, file.size) +
-            // "\"></video>"
-        } else {
-            // TODO: handle by plugins
-        }
-        if (content) {
-            properties["de/deepamehta/core/property/Content"] = content
-        }
-        //
-        var file_topic = create_topic("de/deepamehta/core/topictype/File", properties)
-        var action = do_select ? "show" : "none"
-        add_topic_to_canvas(file_topic, action)
-
-        function local_resource_uri(path, type, size) {
-            return "/resource/file:" + encodeURIComponent(path) + "?type=" + type + "&size=" + size
-        }
-
-        function read_text_file(file) {
-            return dmc.get_resource("file:" + file.path)
-        }
+        var file_topic = dmc.execute_command("deepamehta3-files.create-file-topic", {path: file.path})
+        add_topic_to_canvas(file_topic, do_select ? "show" : "none")
     }
 
     /**
@@ -161,13 +122,8 @@ function dm3_files() {
      * @param   do_select   Optional: if evaluates to true the Folder topic is selected on the canvas.
      */
     this.create_folder_topic = function(dir, do_select) {
-        var properties = {
-            "de/deepamehta/core/property/FolderName": dir.name,
-            "de/deepamehta/core/property/Path":       dir.path
-        }
-        var folder_topic = create_topic("de/deepamehta/core/topictype/Folder", properties)
-        var action = do_select ? "show" : "none"
-        add_topic_to_canvas(folder_topic, action)
+        var folder_topic = dmc.execute_command("deepamehta3-files.create-folder-topic", {path: dir.path})
+        add_topic_to_canvas(folder_topic, do_select ? "show" : "none")
     }
 
     /**
