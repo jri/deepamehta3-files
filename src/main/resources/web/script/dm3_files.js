@@ -7,25 +7,25 @@ function dm3_files() {
     }
 
     this.process_drop = function(data_transfer) {
-        if (contains(data_transfer.types, "Files")) {
+        if (js.contains(data_transfer.types, "Files")) {
             if (typeof netscape != "undefined") {
                 var files = process_file_drop_firefox(data_transfer)
-            } else if (contains(data_transfer.types, "text/uri-list")) {
+            } else if (js.contains(data_transfer.types, "text/uri-list")) {
                 var files = process_file_drop_safari(data_transfer)
             } else {
-                alert("WARNING: drag'n'drop operation is ignored.\n\nDropping files/folders is not yet supported " +
-                    "by DeepaMehta for this browser/operating system.\n" + inspect(navigator) + inspect($.browser))
+                alert("WARNING: drag'n'drop operation is ignored.\n\nDropping files/folders is not yet supported by " +
+                    "DeepaMehta for this browser/operating system.\n" + js.inspect(navigator) + js.inspect($.browser))
             }
             // Note: if an error occurred "files" is not initialized
             if (files) {
-                trigger_hook("process_files_drop", files)
+                dm3c.trigger_hook("process_files_drop", files)
             }
-        } else if (contains(data_transfer.types, "text/plain")) {
+        } else if (js.contains(data_transfer.types, "text/plain")) {
             alert("WARNING: drag'n'drop operation is ignored.\n\nType: text/plain " +
                 "(not yet implemented by DeepaMehta)\n\nText: \"" + data_transfer.getData("text/plain") + "\"")
         } else {
             alert("WARNING: drag'n'drop operation is ignored.\n\nUnexpected type " +
-                "(not yet implemented by DeepaMehta)\n" + inspect(data_transfer))
+                "(not yet implemented by DeepaMehta)\n" + js.inspect(data_transfer))
         }
 
         function process_file_drop_firefox(data_transfer) {
@@ -37,7 +37,7 @@ function dm3_files() {
                     netscape.security.PrivilegeManager.enablePrivilege("UniversalFileRead")
                     var path = file.mozFullPath
                     if (is_directory(file)) {
-                        var dropped_dir = dmc.get_resource("file:" + path)
+                        var dropped_dir = dm3c.restc.get_resource("file:" + path)
                         files.add_directory(dropped_dir)
                         continue
                     }
@@ -56,7 +56,7 @@ function dm3_files() {
                     return false
                 }
                 // Otherwise we involve the server to get information about the item
-                var info = dmc.get_resource_info("file:" + file.mozFullPath)
+                var info = dm3c.restc.get_resource_info("file:" + file.mozFullPath)
                 return info.kind == "directory"
             }
         }
@@ -68,7 +68,7 @@ function dm3_files() {
             for (var i = 0, file; file = data_transfer.files[i]; i++) {
                 var path = uri_to_path(uri_list[i])
                 if (is_directory(path)) {
-                    var dropped_dir = dmc.get_resource("file:" + path)
+                    var dropped_dir = dm3c.restc.get_resource("file:" + path)
                     files.add_directory(dropped_dir)
                     continue
                 }
@@ -98,7 +98,7 @@ function dm3_files() {
     this.topic_doubleclicked = function(topic) {
         if (topic.type == "de/deepamehta/core/topictype/File" ||
             topic.type == "de/deepamehta/core/topictype/Folder") {
-            dmc.execute_command("deepamehta3-files.open-file", {topic_id: topic.id})
+            dm3c.restc.execute_command("deepamehta3-files.open-file", {topic_id: topic.id})
         }
     }
 
@@ -111,8 +111,8 @@ function dm3_files() {
      * @param   do_select   Optional: if evaluates to true the File topic is selected on the canvas.
      */
     this.create_file_topic = function(file, do_select) {
-        var file_topic = dmc.execute_command("deepamehta3-files.create-file-topic", {path: file.path})
-        add_topic_to_canvas(file_topic, do_select ? "show" : "none")
+        var file_topic = dm3c.restc.execute_command("deepamehta3-files.create-file-topic", {path: file.path})
+        dm3c.add_topic_to_canvas(file_topic, do_select ? "show" : "none")
     }
 
     /**
@@ -122,8 +122,8 @@ function dm3_files() {
      * @param   do_select   Optional: if evaluates to true the Folder topic is selected on the canvas.
      */
     this.create_folder_topic = function(dir, do_select) {
-        var folder_topic = dmc.execute_command("deepamehta3-files.create-folder-topic", {path: dir.path})
-        add_topic_to_canvas(folder_topic, do_select ? "show" : "none")
+        var folder_topic = dm3c.restc.execute_command("deepamehta3-files.create-folder-topic", {path: dir.path})
+        dm3c.add_topic_to_canvas(folder_topic, do_select ? "show" : "none")
     }
 
     /**
@@ -147,14 +147,14 @@ function dm3_files() {
         }
     }
 
-    // ------------------------------------------------------------------------------------------------- Private Methods
+    // ----------------------------------------------------------------------------------------------- Private Functions
 
     function extend_rest_client() {
 
         /**
          * @param   uri     Must not be URI-encoded!
          */
-        dmc.get_resource = function(uri, type, size) {
+        dm3c.restc.get_resource = function(uri, type, size) {
             var params = this.createRequestParameter({type: type, size: size})
             return this.request("GET", "/resource/" + encodeURIComponent(uri) + params.to_query_string())
         }
@@ -162,7 +162,7 @@ function dm3_files() {
         /**
          * @param   uri     Must not be URI-encoded!
          */
-        dmc.get_resource_info = function(uri) {
+        dm3c.restc.get_resource_info = function(uri) {
             return this.request("GET", "/resource/" + encodeURIComponent(uri) + "/info")
         }
     }
