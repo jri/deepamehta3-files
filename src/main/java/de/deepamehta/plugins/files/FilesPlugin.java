@@ -12,7 +12,6 @@ import org.codehaus.jettison.json.JSONObject;
 import java.awt.Desktop;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.UnsupportedEncodingException;
 
 import java.util.HashMap;
@@ -144,7 +143,7 @@ public class FilesPlugin extends Plugin {
         String content = null;
         String path = file.getPath();
         if (fileType.equals("text/plain")) {
-            content = "<pre>" + readTextFile(file) + "</pre>";
+            content = "<pre>" + JavaUtils.readTextFile(file) + "</pre>";
         } else if (fileType.startsWith("image/")) {
             content = "<img src=\"" + localResourceURI(path, fileType, fileSize) + "\"></img>";
         } else if (fileType.equals("application/pdf")) {
@@ -165,14 +164,5 @@ public class FilesPlugin extends Plugin {
 
     private String localResourceURI(String path, String type, long size) throws UnsupportedEncodingException {
         return "/resource/file:" + JavaUtils.encodeURIComponent(path) + "?type=" + type + "&size=" + size;
-    }
-
-    private String readTextFile(File file) throws FileNotFoundException {
-        StringBuilder text = new StringBuilder();
-        Scanner scanner = new Scanner(file, "UTF-8");
-        while (scanner.hasNextLine()) {
-            text.append(scanner.nextLine() + "\n");
-        }
-        return text.toString();
     }
 }
